@@ -1,0 +1,55 @@
+# Build outputs
+*.exe
+*.app
+*.dmg
+*.deb
+*.rpm
+*.tar.gz
+*.tar.xz
+*.zip
+
+# Distribution directories
+dist/
+fyne-cross/
+
+# Test files
+test-backups/
+*.test
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# AI Assistant files
+.claude/
+CLAUDE.md
+.cline/
+.cursor/
+.continue/
+.aider*
+.copilot/
+.github-copilot/
+.tabnine/
+.codewhisperer/
+*.claude.md
+*.cline.md
+*.cursor.md
+*.aider.md
+
+# Go build artifacts
+vendor/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/dist/
+fyne-cross/

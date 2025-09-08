@@ -1,0 +1,135 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Install fyne-cross
+      run: go install github.com/fyne-io/fyne-cross@latest
+
+    - name: Build Windows
+      run: |
+        fyne-cross windows \
+          --icon assets/icon.png \
+          --app-id com.calo.knightsaver \
+          --app-version ${{ github.event.inputs.version || github.ref_name }}
+
+    - name: Build Linux
+      run: |
+        fyne-cross linux \
+          --icon assets/icon.png \
+          --app-id com.calo.knightsaver \
+          --app-version ${{ github.event.inputs.version || github.ref_name }}
+
+    - name: Build macOS
+      run: |
+        fyne-cross darwin \
+          --icon assets/icon.png \
+          --app-id com.calo.knightsaver \
+          --app-version ${{ github.event.inputs.version || github.ref_name }}
+
+    - name: Organize distribution files
+      run: |
+        mkdir -p dist/{windows,linux,macos}
+        
+        # Copy Windows builds
+        find fyne-cross/dist -name "*.exe" -exec cp {} dist/windows/ \;
+        find fyne-cross/dist -name "*.tar.xz" -path "*/windows-*" -exec cp {} dist/windows/ \; || true
+        
+        # Copy Linux builds
+        find fyne-cross/dist -name "*.tar.xz" -path "*/linux-*" -exec cp {} dist/linux/ \; || true
+        find fyne-cross/dist -name "knightsaver" -exec cp {} dist/linux/ \; 2>/dev/null || true
+        
+        # Copy macOS builds
+        find fyne-cross/dist -name "*.app" -exec cp -r {} dist/macos/ \; || true
+        find fyne-cross/dist -name "*.tar.xz" -path "*/darwin-*" -exec cp {} dist/macos/ \; || true
+
+    - name: Create release documentation
+      run: |
+        cat > dist/README.md << 'EOF'
+        # KnightSaver - Cross-Platform Save File Manager
+        
+        GUI application for backing up and restoring Hollow Knight and Silksong save files.
+        
+        ## Downloads
+        
+        - **Windows**: Download from `windows/` folder
+        - **Linux**: Download from `linux/` folder  
+        - **macOS**: Download from `macos/` folder
+        
+        ## Features
+        
+        - Cross-platform support (Windows, macOS, Linux)
+        - Dual-game support (Hollow Knight and Silksong)
+        - Smart backup naming with date stamps
+        - Restore validation prevents file mixing
+        - Native file dialogs
+        - Automatic game directory detection
+        
+        ## Usage
+        
+        1. Click "SCAN DIRS" to find save files
+        2. Select files with checkboxes
+        3. "EXPORT BACKUP" to backup selected saves
+        4. "RESTORE BACKUP" to restore from backups
+        
+        ## License
+        
+        MIT License
+        EOF
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: knightsaver-release
+        path: dist/
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/**/*
+        body: |
+          ## KnightSaver Release ${{ github.ref_name }}
+          
+          Cross-platform GUI application for Hollow Knight and Silksong save file management.
+          
+          ### Downloads
+          - **Windows**: `.exe` files and archives in the release assets
+          - **Linux**: Archives and binaries in the release assets  
+          - **macOS**: `.app` bundles in the release assets
+          
+          ### What's New
+          - Cross-platform save file backup and restore
+          - Native GUI with file dialogs
+          - Automatic game directory detection
+          - Smart backup naming with collision handling
+          
+          ### Installation
+          See the README.md file in the release assets for platform-specific installation instructions.
+          
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
